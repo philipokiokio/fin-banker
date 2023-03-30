@@ -1,4 +1,4 @@
-# FastAPI SAAS Template
+# Fin-Banker  REST API Service
 FastAPI is a web framework which can be applied to various problems. Building Subscription As a Service application is one use case.
 
 As such I left the need to create a template that provides a lot of base/out of the box features such as 

@@ -21,10 +21,12 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer),
         sa.Column("first_name", sa.String(), nullable=False),
         sa.Column("last_name", sa.String(), nullable=False),
+        sa.Column("username", sa.String, nullable=False),
         sa.Column("email", sa.String, unique=True, nullable=False),
         sa.Column("password", sa.String, nullable=False),
-        sa.Column("is_verified", sa.Boolean, nullable=False),
-        sa.Column("is_premium", sa.Boolean, nullable=False),
+        sa.Column(
+            "is_admin", sa.Boolean, nullable=False, server_default=sa.text("false")
+        ),
         sa.Column(
             "date_created", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()")
         ),

@@ -37,9 +37,11 @@ class ResponseModel(AbstractModel):
     status: int
 
 
-class RoleOptions(Enum):
-    admin = "Admin"
-    member = "Member"
+class StatusOptions(Enum):
+    sent = "Sent"
+    accepted = "Accepted"
+    rejected = "Rejected"
+    reverted = "Reverted"
 
 
 class User(AbstractModel):
@@ -51,4 +53,5 @@ class User(AbstractModel):
 
     first_name: str
     last_name: str
+    username: str
     email: EmailStr

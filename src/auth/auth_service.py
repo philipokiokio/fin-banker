@@ -1,12 +1,12 @@
 # Framework Imports
+from decimal import Decimal
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 
 # application imports
 from src.app.utils.db_utils import hash_password, verify_password
-from src.app.utils.mailer_util import send_mail
-from src.app.utils.token import auth_retrieve_token, auth_settings, auth_token
+from src.app.utils.token import auth_settings, auth_token
 from src.auth import schemas
 from src.auth.auth_repository import token_repo, user_repo
 from src.auth.models import RefreshToken, User
@@ -15,6 +15,7 @@ from src.auth.oauth import (
     create_refresh_token,
     credential_exception,
 )
+from src.accounts.account_repo import account_repo
 
 
 class UserService:
@@ -22,6 +23,17 @@ class UserService:
         # Initializing Repositories
         self.user_repo = user_repo
         self.token_repo = token_repo
+        self.account_repo = account_repo
+
+    def orm_call(self, user: User):
+        user_ = user.__dict__
+        if user.account:
+            user_["account"] = user.account
+        if user.debit_logs:
+            user_["debits"] = user.debit_logs
+        if user.credit_logs:
+            user_["credits"] = user.credit_logs
+        return user_
 
     async def register(self, user: schemas.user_create) -> User:
         # checking if user exists.
@@ -36,21 +48,30 @@ class UserService:
         # password hashing
         user.password = hash_password(user.password)
         # creating new user
-        new_user = self.user_repo.create(user)
-        # create new access token
-        token = auth_token(new_user.email)
-        # mail data inserted in to the  template
-        mail_data = {
-            "first_name": new_user.first_name,
-            "url": f"{auth_settings.frontend_url}/auth/verification/{token}/",
-        }
-        # mail title
-        mail_title = "Verify your Account"
-        template_pointer = "user/verification.html"
-        # send mail
-        await send_mail([new_user.email], mail_title, mail_data, template_pointer)
+        user_ = user.dict()
+        new_user = self.user_repo.create(user_)
+        account_dict = {"user_id": new_user.id, "balance": Decimal("1000.00")}
+        self.account_repo.create(account_dict)
 
-        return new_user
+        return self.orm_call(new_user)
+
+    async def register_admin(self, user: schemas.user_create) -> User:
+        # checking if user exists.
+        user_check = self.user_repo.get_user(user.email)
+
+        # raise an Exception if user exists.
+        if user_check:
+            raise HTTPException(
+                detail="This User has an account",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        # password hashing
+        user.password = hash_password(user.password)
+        user_ = user.dict()
+        user_["is_admin"] = True
+        # creating new user
+        new_user = self.user_repo.create(user_)
+        return self.orm_call(new_user)
 
     def login(self, user: OAuth2PasswordRequestForm) -> schemas.LoginResponse:
         # check if user exists.
@@ -65,15 +86,11 @@ class UserService:
         # raise credential error
         if not pass_hash_check:
             credential_exception()
-        # if user is not verified raise exception
-        if user_check.is_verified is False:
-            raise HTTPException(
-                detail="User Account is not verified",
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
+
         # create Access and Refresh Token
-        access_token = create_access_token(jsonable_encoder(user_check))
-        refresh_token = create_refresh_token(jsonable_encoder(user_check))
+        token_data = {"email": user_check.email}
+        access_token = create_access_token(token_data)
+        refresh_token = create_refresh_token(token_data)
         # check if there is a previously existing refresh token
         token_check = self.token_repo.get_token(user_check.id)
         # if token update token column
@@ -87,7 +104,7 @@ class UserService:
         # validating data via the DTO
         refresh_token_ = {"token": refresh_token, "header": "Refresh-Tok"}
         login_resp = schemas.LoginResponse(
-            data=user_check,
+            data=self.orm_call(user_check),
             refresh_token=refresh_token_,
         )
         # DTO response
@@ -107,72 +124,11 @@ class UserService:
         for key, value in update_user_dict.items():
             setattr(user, key, value)
 
-        return self.user_repo.update(user)
+        return self.orm_call(self.user_repo.update(user))
 
     def delete(self, user: User) -> bool:
         # delete user
         return self.user_repo.delete(user)
-
-    async def password_reset(self, user_email: str):
-        # check if user exist.
-        user = self.user_repo.get_user(user_email)
-        # raise Exception if user does not exist.
-        if not user:
-            raise HTTPException(
-                detail="User does not exist", status_code=status.HTTP_404_NOT_FOUND
-            )
-        # create Timed Token
-        token = auth_token(user.email)
-        # mail data
-        mail_data = {
-            "first_name": user.first_name,
-            "url": f"{auth_settings.frontend_url}/auth/verification/{token}/",
-        }
-        # mail subject
-        mail_title = "Reset your Password"
-        template_pointer = "/user/verification.html"
-        # send mail
-        mail_status = await send_mail(
-            [user.email], mail_title, mail_data, template_pointer
-        )
-        # response based on the success or failure of sending mail
-        if mail_status:
-            return {
-                "message": "Reset Mail sent successfully",
-                "status": status.HTTP_200_OK,
-                "mail_status": mail_status,
-            }
-        else:
-            return {
-                "message": "Reset Mail was not sent",
-                "status": status.HTTP_400_BAD_REQUEST,
-                "mail_status": mail_status,
-            }
-
-    def password_reset_complete(self, token: str, password_data: schemas.PasswordData):
-        # extract data from timed token
-        data = auth_retrieve_token(token)
-        # if data is None raise Exception
-        if data is None:
-            raise HTTPException(
-                detail="Token has expired.", status_code=status.HTTP_409_CONFLICT
-            )
-        # check for user based on tokjen data
-
-        user = self.user_repo.get_user(data)
-        # raise exception if user does not exist.
-        if not user:
-            raise HTTPException(
-                detail="User does not exist", status_code=status.HTTP_404_NOT_FOUND
-            )
-        # update newly set password in hash
-        user.password = hash_password(password_data.password)
-        # update user
-        self.user_repo.update(user)
-        return {
-            "message": "User password set successfully",
-            "status": status.HTTP_200_OK,
-        }
 
     def change_password(self, user: User, password_data: schemas.ChangePassword):
         # verify oldpassword is saved in the DB
@@ -190,66 +146,25 @@ class UserService:
         # return user
         return {
             "message": "Password changed successfully",
-            "data": user,
+            "data": self.orm_call(user),
             "status": status.HTTP_200_OK,
         }
 
-    async def resend_verification_token(self, user_email: str):
-        # get user
-        user = self.user_repo.get_user(user_email)
-        # if not user raise Exception
-        if not user:
+    @property
+    def get_users(self):
+        users = self.user_repo.get_users
+        if not users:
             raise HTTPException(
-                detail="User does not exist", status_code=status.HTTP_404_NOT_FOUND
+                detail="no user on finbanker", status_code=status.HTTP_404_NOT_FOUND
             )
-        # create timed token
-        token = auth_token(user.email)
-        # mail data for the template
-        mail_data = {
-            "first_name": user.first_name,
-            "url": f"{auth_settings.frontend_url}/auth/verification/{token}/",
-        }
-        # mail subject
-        mail_title = "Verify your Account"
-        template_pointer = "/user/verification.html"
-        # send email
-        mail_status = await send_mail(
-            [user.email], mail_title, mail_data, template_pointer
-        )
-        # if mail sent send this else
-        if mail_status:
-            return {
-                "message": "Account Verification Mail sent successfully",
-                "status": status.HTTP_200_OK,
-                "mail_status": mail_status,
-            }
-        else:
-            return {
-                "message": "Account Verification Mail was not sent",
-                "status": status.HTTP_400_BAD_REQUEST,
-                "mail_status": mail_status,
-            }
+        users_ = []
 
-    def account_verification_complete(self, token: str):
-        # validate token
-        data = auth_retrieve_token(token)
-        # raise token Error if None
-        if data is None:
-            raise HTTPException(
-                detail="Token has expired.", status_code=status.HTTP_409_CONFLICT
-            )
-        # get user based on the data
-        user = self.user_repo.get_user(data)
-        # if user does not exists raise Exception
-        if not user:
-            raise HTTPException(
-                detail="User does not exist", status_code=status.HTTP_404_NOT_FOUND
-            )
-        # update user verification flag.
-        user.is_verified = True
-        self.user_repo.update(user)
+        for user in users:
+            users_.append(self.orm_call(user))
+
         return {
-            "message": "User Account is verified successfully",
+            "message": "all users on fin-banker retrieved successfully",
+            "data": users_,
             "status": status.HTTP_200_OK,
         }
 

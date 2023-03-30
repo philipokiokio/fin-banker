@@ -15,14 +15,20 @@ class UserRepo(BaseRepo):
         # get user by email
         return self.base_query().filter(User.email == email).first()
 
-    def create(self, user_create: any) -> User:
+    def get_by_username(self, username: str):
+        return self.base_query().filter(User.username == username).first()
+
+    def create(self, user_create: dict) -> User:
         # create a new user
-        new_user = User(**user_create.dict())
-        new_user.is_premium = False
+        new_user = User(**user_create)
         self.db.add(new_user)
         self.db.commit()
         self.db.refresh(new_user)
         return new_user
+
+    @property
+    def get_users(self):
+        return self.base_query().all()
 
     def delete(self, user: User) -> bool:
         # delete user

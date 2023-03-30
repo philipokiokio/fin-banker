@@ -1,12 +1,13 @@
 # python imports
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 # 3rd party
 from pydantic import EmailStr
 
 # application import
-from src.app.utils.schemas_utils import AbstractModel, ResponseModel
+from src.app.utils.schemas_utils import AbstractModel, ResponseModel, User
+from decimal import Decimal
 
 
 # Email DTO (Used for token verification)
@@ -18,16 +19,33 @@ class TokenData(AbstractModel):
 class user_create(AbstractModel):
     first_name: str
     last_name: str
+    username: str
     email: EmailStr
     password: str
-    is_verified: bool = False
+
+
+class Account(AbstractModel):
+    balance: Decimal
+
+
+class Log(AbstractModel):
+    tranzact_id: str
+    ammount: Decimal
+    status: str
+    sender: User
+    reciever: User
+    date_created: datetime
 
 
 # ORM response
 class UserResponse(AbstractModel):
     first_name: str
     last_name: str
+    username: str
     email: EmailStr
+    account: Optional[List[Account]]
+    credit: Optional[List[Log]]
+    debit: Optional[List[Log]]
     date_created: datetime
 
 
@@ -50,6 +68,10 @@ class UserUpdate(AbstractModel):
 # Req-Res Response DTO
 class MessageUserResponse(ResponseModel):
     data: UserResponse
+
+
+class MessageListUserResponse(ResponseModel):
+    data: List[UserResponse]
 
 
 # Token DTO

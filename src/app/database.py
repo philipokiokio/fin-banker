@@ -18,6 +18,9 @@ SessionLocal = scoped_session(SessionFactory)
 Base = declarative_base()
 
 
+print("Database is Ready!")
+
+
 TEST_SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL + "_test"
 test_engine = create_engine(TEST_SQLALCHEMY_DATABASE_URL)
 TestFactory = sessionmaker(autoflush=False, autocommit=False, bind=test_engine)

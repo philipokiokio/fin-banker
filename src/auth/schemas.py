@@ -8,6 +8,7 @@ from pydantic import EmailStr
 # application import
 from src.app.utils.schemas_utils import AbstractModel, ResponseModel, User
 from decimal import Decimal
+from uuid import UUID
 
 
 # Email DTO (Used for token verification)
@@ -29,8 +30,8 @@ class Account(AbstractModel):
 
 
 class Log(AbstractModel):
-    tranzact_id: str
-    ammount: Decimal
+    tranzact_id: UUID
+    amount: Decimal
     status: str
     sender: User
     reciever: User
@@ -44,8 +45,7 @@ class UserResponse(AbstractModel):
     username: str
     email: EmailStr
     account: Optional[List[Account]]
-    credit: Optional[List[Log]]
-    debit: Optional[List[Log]]
+    logs: Optional[List[Log]]
     date_created: datetime
 
 

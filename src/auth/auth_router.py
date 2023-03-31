@@ -90,7 +90,11 @@ def logged_in_user(current_user: dict = Depends(get_current_user)):
     Returns:
         _type_: User
     """
-    return {"message": "Me Data", "data": current_user, "status": status.HTTP_200_OK}
+    return {
+        "message": "Me Data",
+        "data": user_service.orm_call(current_user),
+        "status": status.HTTP_200_OK,
+    }
 
 
 @user_router.patch(

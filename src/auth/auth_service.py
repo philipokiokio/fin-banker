@@ -15,7 +15,7 @@ from src.auth.oauth import (
     create_refresh_token,
     credential_exception,
 )
-from src.accounts.account_repo import account_repo
+from src.accounts.account_repo import account_repo, transaction_repo
 
 
 class UserService:
@@ -24,15 +24,16 @@ class UserService:
         self.user_repo = user_repo
         self.token_repo = token_repo
         self.account_repo = account_repo
+        self.logs = transaction_repo
 
     def orm_call(self, user: User):
         user_ = user.__dict__
         if user.account:
             user_["account"] = user.account
-        if user.debit_logs:
-            user_["debits"] = user.debit_logs
-        if user.credit_logs:
-            user_["credits"] = user.credit_logs
+        print(transaction_repo.get_user_tranzact(user.id))
+
+        user_["logs"] = transaction_repo.get_user_tranzact(user.id)
+
         return user_
 
     async def register(self, user: schemas.user_create) -> User:

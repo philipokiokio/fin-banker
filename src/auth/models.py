@@ -16,18 +16,6 @@ class User(AbstractModel):
     password = Column(String, nullable=False)
     is_admin = Column(Boolean, nullable=False, server_default=text("false"))
     account = relationship("Account", back_populates="user", passive_deletes=True)
-    debit_logs = relationship(
-        "Transaction",
-        back_populates="sender",
-        foreign_keys="Transaction.sender_id",
-        passive_deletes=True,
-    )
-    credit_logs = relationship(
-        "Transaction",
-        back_populates="reciever",
-        foreign_keys="Transaction.reciever_id",
-        passive_deletes=True,
-    )
 
 
 class RefreshToken(AbstractModel):

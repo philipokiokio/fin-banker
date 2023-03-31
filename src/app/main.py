@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # application imports
 from src.auth.auth_router import user_router
+from src.accounts.account_router import account_router
 
 # fastapi initialization
 app = FastAPI()
@@ -27,6 +28,7 @@ app.add_middleware(
 
 # Routers from the application
 app.include_router(user_router)
+app.include_router(account_router)
 
 
 # root of the server

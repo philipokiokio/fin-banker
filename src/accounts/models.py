@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from src.app.utils.models_utils import AbstractModel
 
 
+# DB TABLES
 class Account(AbstractModel):
     __tablename__ = "accounts"
     balance = Column(DECIMAL(scale=2))

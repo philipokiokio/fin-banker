@@ -1,7 +1,9 @@
+from sqlalchemy import or_
 from src.accounts.models import Account, Transaction
 from src.app.utils.base_repository import BaseRepo
 
 
+# DB ORMS FOR ACCOUNTS AND TRANSACTIONS
 class AccountRepo(BaseRepo):
     @property
     def base_query(self):
@@ -38,6 +40,11 @@ class TrasactionRepo(BaseRepo):
 
     def get(self):
         return self.base_query.all()
+
+    def get_user_tranzact(self, user_id: int):
+        return self.base_query.filter(
+            or_(Transaction.sender_id == user_id, Transaction.reciever_id == user_id)
+        ).all()
 
     def get_by_tranzact_id(self, transact_id: str):
         return self.base_query.filter(Transaction.tranzact_id == transact_id).first()

@@ -6,6 +6,9 @@ from src.app.utils.schemas_utils import (
 )
 from decimal import Decimal
 from typing import List
+from uuid import UUID
+
+# DTOS
 
 
 class TranzactionCreate(AbstractModel):
@@ -14,7 +17,7 @@ class TranzactionCreate(AbstractModel):
 
 
 class TransactResp(AbstractModel):
-    tranzact_id: str
+    tranzact_id: UUID
     amount: Decimal
     sender: User
     reciever: User

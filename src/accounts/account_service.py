@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from src.auth.auth_repository import user_repo
 
 
+# SERVICE FOR TRANSACTIONS CRUD AND ADMIN ACTIONS
 class TranzactService:
     def __init__(self) -> None:
         self.repo = transaction_repo
@@ -22,7 +23,7 @@ class TranzactService:
     def race_check(self, account: Account, amount: Decimal):
         if account.balance < amount:
             raise HTTPException(
-                detail="User has insufficient Balance for this transaction",
+                detail="Sender has insufficient Balance for this transaction",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -56,7 +57,7 @@ class TranzactService:
         tranzact_dict["sender_id"] = current_user.id
         tranzact_dict["reciever_id"] = user_check.id
 
-        self.race_check(sender_account, tranzact_dict["amount"])
+        self.race_check(sender_account, Decimal(tranzact_dict["amount"]))
 
         tranzact = self.repo.create(tranzact_dict)
 
@@ -82,7 +83,7 @@ class TranzactService:
 
         if tranzact_update.is_accepted is False:
             tranzaction.status = schemas.StatusOptions.rejected.value
-            sender_account = self.account.get_balance(current_user.id)
+            sender_account = self.account.get_balance(tranzaction.sender_id)
             sender_account.balance = sender_account.balance + tranzaction.amount
             self.account.update(sender_account)
 
@@ -109,7 +110,7 @@ class TranzactService:
         self.tranzact_check(tranzaction)
 
         if tranzaction.status == schemas.StatusOptions.sent.value:
-            sender_account = self.account.get_balance(current_user.id)
+            sender_account = self.account.get_balance(tranzaction.sender_id)
             sender_account.balance = tranzaction.amount + sender_account.balance
             self.account.update(sender_account)
 
@@ -149,8 +150,23 @@ class TranzactService:
             "status": status.HTTP_200_OK,
         }
 
+    def get_user_tranzactions(self, current_user: User):
+        tranzactions = self.repo.get_user_tranzact(current_user.id)
+        self.tranzact_check(tranzactions)
+
+        tranzactions_ = []
+
+        for tranzact in tranzactions:
+            tranzactions_.append(self.orm_call(tranzact))
+
+        return {
+            "message": "tranzactions returned sucessfully",
+            "data": tranzactions_,
+            "status": status.HTTP_200_OK,
+        }
+
     def get_tranzaction(self, tranzact_id: str):
-        tranzaction = self.get_tranzaction(tranzact_id)
+        tranzaction = self.repo.get_by_tranzact_id(tranzact_id)
         self.tranzact_check(tranzaction)
         tranzaction_ = self.orm_call(tranzaction)
         return {
@@ -158,3 +174,6 @@ class TranzactService:
             "data": tranzaction_,
             "status": status.HTTP_200_OK,
         }
+
+
+tranzact_service = TranzactService()

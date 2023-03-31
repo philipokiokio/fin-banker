@@ -71,6 +71,10 @@ class UserService:
         user_["is_admin"] = True
         # creating new user
         new_user = self.user_repo.create(user_)
+
+        account_dict = {"user_id": new_user.id, "balance": Decimal("1000.00")}
+        self.account_repo.create(account_dict)
+
         return self.orm_call(new_user)
 
     def login(self, user: OAuth2PasswordRequestForm) -> schemas.LoginResponse:

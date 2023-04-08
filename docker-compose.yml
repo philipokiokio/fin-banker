@@ -19,7 +19,6 @@ services:
       - ./.env          
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./init.sql:/docker-entrypoint-initdb.d/
 
     environment:
       - "POSTGRES_USER=postgres"

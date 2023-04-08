@@ -17,7 +17,7 @@ user_router = APIRouter(prefix="/api/v1/auth", tags=["User Authentication"])
     status_code=status.HTTP_201_CREATED,
     response_model=schemas.MessageUserResponse,
 )
-async def register(user_create: schemas.user_create):
+def register(user_create: schemas.user_create):
     """Registration of User
 
     Args:
@@ -28,7 +28,7 @@ async def register(user_create: schemas.user_create):
     Returns:
         _type_: response
     """
-    new_user = await user_service.register(user_create)
+    new_user = user_service.register(user_create)
     return {
         "message": "Registration Successful",
         "data": new_user,
@@ -41,7 +41,7 @@ async def register(user_create: schemas.user_create):
     status_code=status.HTTP_201_CREATED,
     response_model=schemas.MessageUserResponse,
 )
-async def register_admin(user_create: schemas.user_create):
+def register_admin(user_create: schemas.user_create):
     """Registration of User
 
     Args:
@@ -52,7 +52,7 @@ async def register_admin(user_create: schemas.user_create):
     Returns:
         _type_: response
     """
-    new_user = await user_service.register_admin(user_create)
+    new_user = user_service.register_admin(user_create)
     return {
         "message": "Registration Successful",
         "data": new_user,

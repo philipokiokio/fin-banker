@@ -30,13 +30,12 @@ class UserService:
         user_ = user.__dict__
         if user.account:
             user_["account"] = user.account
-        print(transaction_repo.get_user_tranzact(user.id))
 
         user_["logs"] = transaction_repo.get_user_tranzact(user.id)
 
         return user_
 
-    async def register(self, user: schemas.user_create) -> User:
+    def register(self, user: schemas.user_create) -> User:
         # checking if user exists.
         user_check = self.user_repo.get_user(user.email)
 
@@ -56,7 +55,7 @@ class UserService:
 
         return self.orm_call(new_user)
 
-    async def register_admin(self, user: schemas.user_create) -> User:
+    def register_admin(self, user: schemas.user_create) -> User:
         # checking if user exists.
         user_check = self.user_repo.get_user(user.email)
 

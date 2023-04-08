@@ -29,7 +29,8 @@ user_data = {
     "password": "anotherday",
     "first_name": "Philip",
     "last_name": "thebackend",
-    "is_verified": False,
+    "username": "regin",
+    "is_admin": False,
 }
 
 
@@ -37,8 +38,9 @@ first_user_data = {
     "email": "tester@gmail.com",
     "password": "anotherday",
     "first_name": "Philip",
+    "username": "reg",
     "last_name": "thebackend",
-    "is_verified": True,
+    "is_admin": False,
 }
 
 second_user_data = {
@@ -46,10 +48,21 @@ second_user_data = {
     "password": "anotherday",
     "first_name": "Philip",
     "last_name": "thebackend",
-    "is_verified": False,
+    "username": "regina",
+    "is_admin": False,
+}
+
+admin_data = {
+    "email": "admin@mail.com",
+    "password": "anotherday",
+    "first_name": "Philip",
+    "last_name": "thebackend",
+    "username": "reginaldo",
+    "is_admin": True,
 }
 
 
+# CREATING FIRST USER
 @pytest.fixture
 def first_user(client):
     client: TestClient = client
@@ -61,6 +74,7 @@ def first_user(client):
     return new_user
 
 
+# CREATING SECOND USER
 @pytest.fixture
 def second_user(client):
     client: TestClient = client
@@ -69,6 +83,18 @@ def second_user(client):
     assert res.status_code == 201
     new_user = res.json()["data"]
     new_user["password"] = second_user_data["password"]
+    return new_user
+
+
+# CREATING ADMIN
+@pytest.fixture
+def admin_user(client):
+    client: TestClient = client
+    res = client.post("/api/v1/auth/register/admin/", json=admin_data)
+
+    assert res.status_code == 201
+    new_user = res.json()["data"]
+    new_user["password"] = admin_data["password"]
     return new_user
 
 
@@ -93,12 +119,6 @@ def first_user_access(first_user):
 
 
 @pytest.fixture
-def secnd_user_access(second_user):
-    access_token = create_access_token(second_user)
-    return access_token
-
-
-@pytest.fixture
 def first_user_refresh(first_user):
     data = {"email": first_user["email"]}
     refresh_token = create_refresh_token(data)
@@ -108,46 +128,98 @@ def first_user_refresh(first_user):
 @pytest.fixture
 def first_auth_client(client, first_user_access):
     client: TestClient = client
-    client.headers = {**client.headers, "Authorization": f"Bearer {first_user_access}"}
+    client.headers = {"Authorization": f"Bearer {first_user_access}"}
     return client
+
+
+@pytest.fixture
+def secnd_user_access(second_user):
+    access_token = create_access_token(second_user)
+    return access_token
 
 
 @pytest.fixture
 def secnd_auth_client(client, secnd_user_access):
     client: TestClient = client
-    client.headers = {**client.headers, "Authorization": f"Bearer {secnd_user_access}"}
+    client.headers = {"Authorization": f"Bearer {secnd_user_access}"}
     return client
 
 
-first_org = {"name": "stripe"}
-second_org = {"name": "paystack"}
+@pytest.fixture
+def admin_access(admin_user):
+    return create_access_token(admin_user)
 
 
 @pytest.fixture
-def first_user_org_created(first_auth_client):
-    client: TestClient = first_auth_client
+def admin_auth_client(client, admin_access):
+    client: TestClient = client
+    client.headers = {"Authorization": f"Bearer {admin_access}"}
+    return client
 
-    res = client.post("api/v1/org/create/", json=first_org)
-    return res.json()
+
+first_tranzaction = {"amount": "100.00", "reciever_username": "regina"}
+second_tranzaction = {"amount": " 200.00", "reciever_username": "reg"}
+
+transaction = "/api/v1/transaction"
 
 
 @pytest.fixture
-def first_user_2nd_org_created(first_auth_client, first_user_org_created):
+def first_user_transfer(first_auth_client, second_user):
     client: TestClient = first_auth_client
-
-    res = client.post("api/v1/org/create/", json=second_org)
+    first_tranzaction["amount"] = "100.00"
+    res = client.post(
+        f"{transaction}/transfer/",
+        params={"amount": first_tranzaction["amount"]},
+        json=first_tranzaction,
+    )
     return res.json().get("data")
 
 
 @pytest.fixture
-def org_memb_2nd_join(first_user_2nd_org_created, client, secnd_user_access):
-    client: TestClient = client
-
-    token = gen_token(first_user_2nd_org_created["slug"])
-    role_token = gen_token("Member")
+def second_user_transfer(secnd_auth_client, first_user):
+    client: TestClient = secnd_auth_client
     res = client.post(
-        "/api/v1/org/join/",
-        params={"token": token, "role_token": role_token},
-        json={"email": second_user_data["email"]},
+        f"{transaction}/transfer/",
+        params={"amount": second_tranzaction["amount"]},
+        json=second_tranzaction,
     )
+    # print(res.text)
+    return res.json().get("data")
+
+
+@pytest.fixture
+def update_transaction_yes(client, secnd_user_access, first_user_transfer):
+    tranzact_id = first_user_transfer["tranzact_id"]
+
+    client: TestClient = client
+    client.headers = {"Authorization": f"Bearer {secnd_user_access}"}
+
+    res = client.patch(
+        f"{transaction}/{tranzact_id}/update/", json={"is_accepted": True}
+    )
+    return res.json().get("data")
+
+
+@pytest.fixture
+def update_transaction_no(secnd_auth_client, first_user_transfer):
+    tranzact_id = first_user_transfer["tranzact_id"]
+
+    client: TestClient = secnd_auth_client
+    res = client.patch(
+        f"{transaction}/{tranzact_id}/update/", json={"is_accepted": False}
+    )
+    return res.json().get("data")
+
+
+@pytest.fixture
+def revert_transaction_successfully(client, admin_access, update_transaction_yes):
+    tranzact_id = update_transaction_yes["tranzact_id"]
+
+    client: TestClient = client
+    client.headers = {"Authorization": f"Bearer {admin_access}"}
+
+    res = client.patch(
+        f"{transaction}/{tranzact_id}/revert/",
+    )
+    print(res.text)
     return res.json().get("data")

@@ -51,3 +51,37 @@ uvicorn src.app.main:app --reload
 ## PostMan Collection.
 
 I create a postman collection that can be forked for testing. here -> https://documenter.getpostman.com/view/17138168/2s93RUuBx8
+
+
+
+
+### Docker Support added.
+what does this means? 
+
+we can skip creating Virtualenvs and work directly with docker.
+
+
+
+The start up code is 
+```
+docker-compose up
+
+
+```
+
+
+tear down
+
+```
+docker-compose down
+
+```
+
+
+to carry out db migrations we use
+
+```
+
+docker-compose exec web alembic upgrade heads
+
+```
